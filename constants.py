@@ -1,5 +1,5 @@
 from bitarray import bitarray
-
+from math import log2
 QAM16 = {
     '-3.0-3.0j': bitarray('0000'),
     '-3.0-1.0j': bitarray('0001'),
@@ -18,7 +18,10 @@ QAM16 = {
     '1.0+3.0j': bitarray('1110'),
     '1.0+1.0j': bitarray('1111'),
 }
-
+QAM_POINTS = [-3. + 3.j, -3. + 1.j, -1. + 3.j, -1. + 1.j, 1. + 3.j, 3. + 3.j, 1. + 1.j, 3. + 1.j,
+              -3. - 1.j, -1. - 1.j, -3. - 3.j, -1. - 3.j, 1. - 1.j, 3. - 1.j, 1. - 3.j, 3. - 3.j]
 N_CARRIERS = 400
 N_FFT = 1024
 EPS = 0.0001+0.0001j
+
+SYMBOL_SIZE = int(N_CARRIERS * log2(len(QAM16)))

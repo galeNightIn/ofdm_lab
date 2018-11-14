@@ -2,8 +2,9 @@ from itertools import zip_longest
 
 import numpy as np
 from bitarray import bitarray
+
 # from matplotlib import pyplot as plt
-from constants import QAM16
+from constants import QAM_POINTS, QAM16, SYMBOL_SIZE
 
 
 class OfdmStages(object):
@@ -29,8 +30,9 @@ class OfdmStages(object):
         bit_string = bitarray()
         with open(self.file_path, 'rb') as file:
             bit_string.fromfile(file)
-
-        return bitarray(bit_string)
+        symbol_number = bit_string.length() // SYMBOL_SIZE
+        slice_limit = symbol_number * SYMBOL_SIZE
+        return bit_string[:slice_limit]
 
     def mapper(self, bit_array=None) -> np.array:
         """Преобразует bit_array в лист точек на комплексной плоскости
@@ -113,21 +115,19 @@ class OfdmStages(object):
 
         return np.array(extract)
 
-    def demapper(self, groups=None, eps=0.0001+0.0001j) -> bitarray: # реализовать
+    def demapper(self, groups=None) -> bitarray: # реализовать
         """Отображение комплексных чисел в двоичный битовый вид
             :param groups: np.array[np.array..np.array]
             :param eps: фильтрующее нули значение
             :return: bitarray
         """
-        points = []
+        message = np.reshape(groups, -1)
+        dist_arr = abs(np.asarray(message).reshape((-1, 1)) - np.asarray(QAM_POINTS).reshape((1, -1)))
+        min_arg = dist_arr.argmin(axis=1)
+        hard_decidion = np.asarray(QAM_POINTS)[min_arg]
         bit_message = bitarray()
 
-        for group in groups:
-            flt = np.array(list(filter(lambda x: abs(x) > abs(eps), group)))
-            points.append(flt)
-
-        message = np.concatenate(points)
-        ms = list(map(lambda x: '{:.1f}'.format(x), message))
+        ms = list(map(lambda x: '{:.1f}'.format(x), hard_decidion))
         bit_message.encode(self.constellation, ms)
 
         return bit_message
@@ -161,7 +161,7 @@ class OfdmStages(object):
 if __name__ == "__main__":
     ofdm = OfdmStages(constellation=QAM16, file_path='image.png')
     bit_arr = ofdm.bit_reader()
-    bit_arr = bit_arr
+    print(bit_arr.length())
     bit_arr_scram = ofdm.scrambler(input_array=bit_arr)
     mapped_list = ofdm.mapper(bit_array=bit_arr_scram)
     groups = ofdm.grouper(ofdm.n_carriers, iterable=mapped_list)
@@ -173,6 +173,8 @@ if __name__ == "__main__":
     groups_final = ofdm.extract_information_frequency_band(fft_transmitted=fft_transmitted)
     bit_arr_end = ofdm.demapper(groups=groups_final)
     bit_arr_suka = ofdm.scrambler(input_array=bit_arr_end)
+    print(bit_arr.length())
+    print(bit_arr_suka.length())
     print(bit_arr ^ bit_arr_suka)
 
 
