@@ -103,7 +103,7 @@ class OfdmStages(object):
     def remove_guard_interval(self, restriched=None):
         restriched_temp = deepcopy(restriched)
         for kek in restriched_temp:
-            kek = np.concatenate((kek, kek[:self.n_tguard]))
+            kek = kek[:-self.n_tguard]
         return restriched_temp
 
     def fft_transmitter(self, ofdm_simbols=None) -> np.array:
@@ -203,7 +203,7 @@ if __name__ == "__main__":
     upsampled = ofdm.upsampler(groups=groups)
 
     ifft_transmitted = ofdm.ifft_transmitter(upsampled=upsampled)
-    # ifft_transmitted = ofdm.add_guard_interval(ifft_transmitted=ifft_transmitted)
+    ifft_transmitted = ofdm.add_guard_interval(ifft_transmitted=ifft_transmitted)
 
     ofdm_signal = ofdm.stitching(ifft_transmitted=ifft_transmitted)
     plt.plot(ofdm_signal, 'r')
@@ -211,7 +211,7 @@ if __name__ == "__main__":
     ofdm.power_util(ofdm_signal)
 
     ofdm_simbols = ofdm.restitching(ofdm_signal=ofdm_signal)
-    # ofdm_simbols = ofdm.remove_guard_interval(restriched=ofdm_simbols)
+    ofdm_simbols = ofdm.remove_guard_interval(restriched=ofdm_simbols)
 
     fft_transmitted = ofdm.fft_transmitter(ofdm_simbols=ofdm_simbols)
 
