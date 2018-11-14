@@ -3,7 +3,7 @@ from itertools import zip_longest
 import numpy as np
 from bitarray import bitarray
 
-# from matplotlib import pyplot as plt
+from matplotlib import pyplot as plt
 from constants import QAM_POINTS, QAM16, SYMBOL_SIZE
 
 
@@ -23,7 +23,7 @@ class OfdmStages(object):
 
     # OFDM Transmitter methods
 
-    def bit_reader(self) -> bitarray: # Считываем реальные доки побитово
+    def bit_reader(self) -> bitarray:
         """Читает битовое сообщение из файла
             :return экземпляр класса bitarray
         """
@@ -99,8 +99,8 @@ class OfdmStages(object):
             :return: np.array[np.array..np.array] пропущенное через преобразование Фурье
         """
         fft = list(map(np.fft.fft, ofdm_simbols))
-        # plt.plot(list(map(lambda x: np.square(np.abs(x)), fft[0])), 'ro')
-        # plt.show()
+        plt.plot(list(map(lambda x: np.square(np.abs(x)), fft[-1])), 'ro')
+        plt.show()
         return np.array(fft)
 
     def extract_information_frequency_band(self, fft_transmitted=None) -> np.array:
