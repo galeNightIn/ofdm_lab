@@ -22,6 +22,7 @@ QAM_POINTS = [-3. + 3.j, -3. + 1.j, -1. + 3.j, -1. + 1.j, 1. + 3.j, 3. + 3.j, 1.
               -3. - 1.j, -1. - 1.j, -3. - 3.j, -1. - 3.j, 1. - 1.j, 3. - 1.j, 1. - 3.j, 3. - 3.j]
 N_CARRIERS = 400
 N_FFT = 1024
+T_GUARD = N_FFT // 8
 EPS = 0.0001+0.0001j
 
 SYMBOL_SIZE = int(N_CARRIERS * log2(len(QAM16)))

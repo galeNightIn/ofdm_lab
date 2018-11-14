@@ -1,5 +1,5 @@
 from itertools import zip_longest
-
+from copy import deepcopy
 import numpy as np
 from bitarray import bitarray
 from math import log10
@@ -9,7 +9,7 @@ from constants import QAM_POINTS, QAM16, SYMBOL_SIZE
 
 class OfdmStages(object):
 
-    def __init__(self, n_carriers=400, n_fft=1024, file_path='ofdm.png', constellation=None):
+    def __init__(self, n_carriers=400, n_fft=1024, n_tguard=1024//8, file_path='ofdm.png', constellation=None):
         """
         :param n_carriers:
         :param n_fft:
@@ -20,6 +20,7 @@ class OfdmStages(object):
         self.n_fft = n_fft
         self.file_path = file_path
         self.constellation = constellation
+        self.n_tguard = n_tguard
 
     # OFDM Transmitter methods
 
@@ -75,6 +76,12 @@ class OfdmStages(object):
         ifft = list(map(np.fft.ifft, upsampled))
         return np.array(ifft)
 
+    def add_guard_interval(self, ifft_transmitted=None):
+        ifft_temp = deepcopy(ifft_transmitted)
+        for kek in ifft_temp:
+            kek = np.concatenate((kek, kek[:self.n_tguard]))
+        return ifft_temp
+
     @staticmethod
     def stitching(ifft_transmitted=None) -> np.array:
         """Сшивка ifft векторов в ofdm сигнал
@@ -92,6 +99,12 @@ class OfdmStages(object):
             :return: np.array[np.array..np.array] вектор векторов по n_fft т.е ofdm-символы
         """
         return self.grouper(n=self.n_fft, iterable=ofdm_signal, fillvalue=np.complex128(0))
+
+    def remove_guard_interval(self, restriched=None):
+        restriched_temp = deepcopy(restriched)
+        for kek in restriched_temp:
+            kek = np.concatenate((kek, kek[:self.n_tguard]))
+        return restriched_temp
 
     def fft_transmitter(self, ofdm_simbols=None) -> np.array:
         """ДПФ для каждого ofdm - символа
@@ -114,7 +127,7 @@ class OfdmStages(object):
 
         return np.array(extract)
 
-    def demapper(self, groups=None) -> bitarray: # реализовать
+    def demapper(self, groups=None) -> bitarray:
         """Отображение комплексных чисел в двоичный битовый вид
             :param groups: np.array[np.array..np.array]
             :param eps: фильтрующее нули значение
@@ -181,20 +194,24 @@ if __name__ == "__main__":
 
     bit_arr = ofdm.bit_reader()
 
-    # bit_arr_scram = ofdm.scrambler(input_array=bit_arr)
+    bit_arr_scram = ofdm.scrambler(input_array=bit_arr)
 
-    mapped_list = ofdm.mapper(bit_array=bit_arr)
+    mapped_list = ofdm.mapper(bit_array=bit_arr_scram)
 
     groups = ofdm.grouper(ofdm.n_carriers, iterable=mapped_list)
 
     upsampled = ofdm.upsampler(groups=groups)
 
     ifft_transmitted = ofdm.ifft_transmitter(upsampled=upsampled)
+    # ifft_transmitted = ofdm.add_guard_interval(ifft_transmitted=ifft_transmitted)
 
     ofdm_signal = ofdm.stitching(ifft_transmitted=ifft_transmitted)
+    plt.plot(ofdm_signal, 'r')
+    plt.show()
     ofdm.power_util(ofdm_signal)
 
     ofdm_simbols = ofdm.restitching(ofdm_signal=ofdm_signal)
+    # ofdm_simbols = ofdm.remove_guard_interval(restriched=ofdm_simbols)
 
     fft_transmitted = ofdm.fft_transmitter(ofdm_simbols=ofdm_simbols)
 
@@ -202,14 +219,9 @@ if __name__ == "__main__":
 
     bit_arr_end = ofdm.demapper(groups=groups_final)
 
-    # bit_arr_end = ofdm.scrambler(input_array=bit_arr_end)
+    bit_arr_end = ofdm.scrambler(input_array=bit_arr_end)
 
     xor_result = ofdm.bitarray_to_nparray(bit_arr ^ bit_arr_end)
     plt.plot(xor_result, 'r')
     plt.title(f'Исходные данные XOR Выходные данные')
     plt.show()
-
-
-
-
-
