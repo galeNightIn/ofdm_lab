@@ -2,7 +2,7 @@ from itertools import zip_longest
 
 import numpy as np
 from bitarray import bitarray
-
+from math import log10
 from matplotlib import pyplot as plt
 from constants import QAM_POINTS, QAM16, SYMBOL_SIZE
 
@@ -77,11 +77,12 @@ class OfdmStages(object):
 
     @staticmethod
     def stitching(ifft_transmitted=None) -> np.array:
-        """Сшивка ifft мекторов в ofdm сигнал
+        """Сшивка ifft векторов в ofdm сигнал
             :param ifft_transmitted: np.array[np.array..np.array] пропущенное через ОДПФ
             :return ofdm_signal: np.array развернутый ifft_transmitted
         """
-        return np.reshape(ifft_transmitted, -1)
+        stitched = np.reshape(ifft_transmitted, -1)
+        return stitched
 
     # OFDM receiver methods
     def restitching(self, ofdm_signal) -> np.array:
@@ -99,8 +100,6 @@ class OfdmStages(object):
             :return: np.array[np.array..np.array] пропущенное через преобразование Фурье
         """
         fft = list(map(np.fft.fft, ofdm_simbols))
-        plt.plot(list(map(lambda x: np.square(np.abs(x)), fft[-1])), 'ro')
-        plt.show()
         return np.array(fft)
 
     def extract_information_frequency_band(self, fft_transmitted=None) -> np.array:
@@ -125,8 +124,13 @@ class OfdmStages(object):
         dist_arr = abs(np.asarray(message).reshape((-1, 1)) - np.asarray(QAM_POINTS).reshape((1, -1)))
         min_arg = dist_arr.argmin(axis=1)
         hard_decidion = np.asarray(QAM_POINTS)[min_arg]
-        bit_message = bitarray()
+        X = [x.real for x in hard_decidion]
+        Y = [x.imag for x in hard_decidion]
+        plt.scatter(X, Y, color='red')
+        plt.title(f'Демаппер')
+        plt.show()
 
+        bit_message = bitarray()
         ms = list(map(lambda x: '{:.1f}'.format(x), hard_decidion))
         bit_message.encode(self.constellation, ms)
 
@@ -157,25 +161,54 @@ class OfdmStages(object):
 
         return output_bit_array
 
+    @staticmethod
+    def bitarray_to_nparray(bit_array=None):
+        return np.array(bit_array.tolist())
+
+    @staticmethod
+    def power_util(ofdm_signal=None):
+        power_array = np.array(list(map(lambda x: np.square(np.abs(x)), ofdm_signal)))
+        mean_power = power_array.mean()
+        max_power = power_array.max()
+        plt.plot(power_array, 'r')
+        plt.title(f'P={20*log10(max_power / mean_power)} дБ')
+        plt.show()
+        return 20*log10(max_power / mean_power)
+
 
 if __name__ == "__main__":
     ofdm = OfdmStages(constellation=QAM16, file_path='image.png')
+
     bit_arr = ofdm.bit_reader()
-    print(bit_arr.length())
-    bit_arr_scram = ofdm.scrambler(input_array=bit_arr)
-    mapped_list = ofdm.mapper(bit_array=bit_arr_scram)
+
+    # bit_arr_scram = ofdm.scrambler(input_array=bit_arr)
+
+    mapped_list = ofdm.mapper(bit_array=bit_arr)
+
     groups = ofdm.grouper(ofdm.n_carriers, iterable=mapped_list)
+
     upsampled = ofdm.upsampler(groups=groups)
+
     ifft_transmitted = ofdm.ifft_transmitter(upsampled=upsampled)
+
     ofdm_signal = ofdm.stitching(ifft_transmitted=ifft_transmitted)
+    ofdm.power_util(ofdm_signal)
+
     ofdm_simbols = ofdm.restitching(ofdm_signal=ofdm_signal)
+
     fft_transmitted = ofdm.fft_transmitter(ofdm_simbols=ofdm_simbols)
+
     groups_final = ofdm.extract_information_frequency_band(fft_transmitted=fft_transmitted)
+
     bit_arr_end = ofdm.demapper(groups=groups_final)
-    bit_arr_suka = ofdm.scrambler(input_array=bit_arr_end)
-    print(bit_arr.length())
-    print(bit_arr_suka.length())
-    print(bit_arr ^ bit_arr_suka)
+
+    # bit_arr_end = ofdm.scrambler(input_array=bit_arr_end)
+
+    xor_result = ofdm.bitarray_to_nparray(bit_arr ^ bit_arr_end)
+    plt.plot(xor_result, 'r')
+    plt.title(f'Исходные данные XOR Выходные данные')
+    plt.show()
+
 
 
 
