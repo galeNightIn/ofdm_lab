@@ -210,7 +210,7 @@ if __name__ == "__main__":
     ofdm_simbols = ofdm.restitching(ofdm_signal=ofdm_signal, n=N_FFT+T_GUARD)
     ofdm_simbols = ofdm.remove_guard_interval(restriched=ofdm_simbols)
     fft_transmitted = ofdm.fft_transmitter(ofdm_simbols=ofdm_simbols)
-groups_final = ofdm.extract_information_frequency_band(fft_transmitted=fft_transmitted)
+    groups_final = ofdm.extract_information_frequency_band(fft_transmitted=fft_transmitted)
 
     bit_arr_end = ofdm.demapper(groups=groups_final)
 
