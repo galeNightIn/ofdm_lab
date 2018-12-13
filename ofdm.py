@@ -4,12 +4,11 @@ import numpy as np
 from bitarray import bitarray
 from math import log10
 from matplotlib import pyplot as plt
-from constants import QAM_POINTS, QAM16, SYMBOL_SIZE
+from constants import QAM_POINTS, QAM16, SYMBOL_SIZE, N_FFT, T_GUARD, N_CARRIERS
 
 
 class OfdmStages(object):
-
-    def __init__(self, n_carriers=400, n_fft=1024, n_tguard=1024//8, file_path='ofdm.png', constellation=None):
+    def __init__(self, n_carriers=N_CARRIERS, n_fft=N_FFT, n_tguard=T_GUARD, file_path='ofdm.png', constellation=None):
         """
         :param n_carriers:
         :param n_fft:
@@ -76,11 +75,12 @@ class OfdmStages(object):
         ifft = list(map(np.fft.ifft, upsampled))
         return np.array(ifft)
 
-    def add_guard_interval(self, ifft_transmitted=None):
+    def add_guard_interval(self, ifft_transmitted=None) -> np.array:
         ifft_temp = deepcopy(ifft_transmitted)
-        for kek in ifft_temp:
-            kek = np.concatenate((kek, kek[:self.n_tguard]))
-        return ifft_temp
+        result = list()
+        for item in ifft_temp:
+            result.append(np.concatenate((item, item[:self.n_tguard])))
+        return np.array(result)
 
     @staticmethod
     def stitching(ifft_transmitted=None) -> np.array:
@@ -92,19 +92,20 @@ class OfdmStages(object):
         return stitched
 
     # OFDM receiver methods
-    def restitching(self, ofdm_signal) -> np.array:
+    def restitching(self, ofdm_signal, n=N_FFT) -> np.array:
         """Расшивка по массивам размера n_fft
 
             :param ofdm_signal: np.array развернутый ifft_transmitted
             :return: np.array[np.array..np.array] вектор векторов по n_fft т.е ofdm-символы
         """
-        return self.grouper(n=self.n_fft, iterable=ofdm_signal, fillvalue=np.complex128(0))
+        return self.grouper(n=n, iterable=ofdm_signal, fillvalue=np.complex128(0))
 
     def remove_guard_interval(self, restriched=None):
         restriched_temp = deepcopy(restriched)
-        for kek in restriched_temp:
-            kek = kek[:-self.n_tguard]
-        return restriched_temp
+        result = list()
+        for item in restriched_temp:
+            result.append(item[:-self.n_tguard])
+        return np.array(result)
 
     def fft_transmitter(self, ofdm_simbols=None) -> np.array:
         """ДПФ для каждого ofdm - символа
@@ -203,19 +204,13 @@ if __name__ == "__main__":
     upsampled = ofdm.upsampler(groups=groups)
 
     ifft_transmitted = ofdm.ifft_transmitter(upsampled=upsampled)
+
     ifft_transmitted = ofdm.add_guard_interval(ifft_transmitted=ifft_transmitted)
-
     ofdm_signal = ofdm.stitching(ifft_transmitted=ifft_transmitted)
-    plt.plot(ofdm_signal, 'r')
-    plt.show()
-    ofdm.power_util(ofdm_signal)
-
-    ofdm_simbols = ofdm.restitching(ofdm_signal=ofdm_signal)
+    ofdm_simbols = ofdm.restitching(ofdm_signal=ofdm_signal, n=N_FFT+T_GUARD)
     ofdm_simbols = ofdm.remove_guard_interval(restriched=ofdm_simbols)
-
     fft_transmitted = ofdm.fft_transmitter(ofdm_simbols=ofdm_simbols)
-
-    groups_final = ofdm.extract_information_frequency_band(fft_transmitted=fft_transmitted)
+groups_final = ofdm.extract_information_frequency_band(fft_transmitted=fft_transmitted)
 
     bit_arr_end = ofdm.demapper(groups=groups_final)
 
